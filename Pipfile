@@ -8,7 +8,6 @@ verify_ssl = true
 [packages]
 azure-functions = "*"
 azure-storage-blob = "*"
-azure-identity = "*"
 requests = "*"
 
 [requires]

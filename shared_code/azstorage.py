@@ -1,49 +1,49 @@
 import os
 from azure.storage.blob import BlobServiceClient
-from azure.storage.blob._models import BlobPrefix
-from azure.identity import ClientSecretCredential
 import logging
+import time
 
 logger = logging.getLogger('app')
 
-STORAGE_URL = os.getenv('AZURE_STORAGE_ACCOUNT_URL')
-if not STORAGE_URL:
-  raise ValueError("Need to define AZURE_STORAGE_ACCOUNT_URL")
+storage_account = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
+if not storage_account:
+  raise ValueError("Need to define AZURE_STORAGE_ACCOUNT_NAME")
 
-CONTAINER_NAME = os.getenv('AZURE_STORAGE_CONTAINER_NAME')
-if not CONTAINER_NAME:
+container_name = os.getenv('AZURE_STORAGE_CONTAINER_NAME')
+if not container_name:
   raise ValueError("Need to define AZURE_STORAGE_CONTAINER_NAME")
 
-TENANT_ID = os.getenv("AZURE_TENANT_ID")
-if not TENANT_ID:
-    raise ValueError("Need to define TENANT_ID environment variable")
-
-CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
-if not CLIENT_ID:
-    raise ValueError("Need to define CLIENT_ID environment variable")
-
-CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
-if not CLIENT_SECRET:
-    raise ValueError("Need to define CLIENT_SECRET environment variable")
-
+key = os.getenv("AZURE_STORAGE_KEY")
+if not key:
+    raise ValueError("Need to define AZURE_STORAGE_KEY environment variable")
 
 class AzureStorage:
 
-    def __init__(self, app_config):
-        
-        self.account_url = STORAGE_URL
-        self.container_name = CONTAINER_NAME
-        
-        # Get a token credential for authentication
-        token_credential = ClientSecretCredential(
-            TENANT_ID,
-            CLIENT_ID,
-            CLIENT_SECRET
-        )
-        
+    def __init__(self):
+
+        self.connection_string = f"DefaultEndpointsProtocol=https;AccountName={storage_account};AccountKey={key};EndpointSuffix=core.windows.net"
+        self.container = container_name     
         # Create the BlobServiceClient and connect to the storage container
         try:
-            self.blob_service_client = BlobServiceClient(account_url=self.account_url, credential=token_credential)
-            self.container_client = self.blob_service_client.get_container_client(self.container_name)
+            self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+        except Exception as e:
+            logger.error(e)
+
+    def write_file(self, path_to_file, path=""):
+        filename = os.path.basename(path_to_file)
+        try:
+            # Create a blob client using the local file name as the name for the blob
+            blob_client = self.blob_service_client.get_blob_client(container=self.container,
+                                                                   blob=(path + filename))
+        
+            logger.info("Uploading " + filename + " to Azure Storage on path: " + path)
+
+            # Upload the file and measure upload time
+            elapsed_time = time.time()
+            with open(path_to_file, "rb") as data:
+                blob_client.upload_blob(data)
+            elapsed_time = round(time.time() - elapsed_time, 2)
+            logger.info("Upload succeeded after " + str(elapsed_time) + " seconds for: " + filename)
+
         except Exception as e:
             logger.error(e)
