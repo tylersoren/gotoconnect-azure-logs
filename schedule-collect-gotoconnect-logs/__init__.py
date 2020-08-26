@@ -3,10 +3,14 @@ import logging
 import csv
 import os
 import azure.functions as func
-from ..shared_code.gotoconnect_api import refresh_access_token, get_jive_users, get_jive_user_activity
+from ..shared_code.gotoconnect import GoToConnect
 from ..shared_code.azstorage import AzureStorage
 
 logger = logging.getLogger('app')
+
+day_count = os.getenv("DAYS_TO_RETRIEVE")
+if not day_count:
+    raise ValueError("Need to define DAYS_TO_RETRIEVE environment variable")
 
 def main(mytimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(
@@ -17,43 +21,57 @@ def main(mytimer: func.TimerRequest) -> None:
 
     logging.info('Python timer trigger function ran at %s', utc_timestamp)
 
-    token = refresh_access_token()
-    logger.info("retrieved token")
-    users = get_jive_users(token)
-    logger.info("retrieved user list")
+    # Create gotoconnect connection object
+    gotoconnect = GoToConnect()     
 
-    activity_list = []
-    for user in users:
-        user_activity = get_jive_user_activity(user['userId'], token)
-        for item in user_activity:
-            item["user"] = user['userName']
-            # Convert duration from milliseconds to HH:MM:SS format and drop
-            # remaining milliseconds
-            duration=datetime.timedelta(milliseconds=item['duration'])
-            item['duration']=str(duration).split('.')[0]
-            if item['queue']:
-                item['queue'] = item['queue']['name']
+    days = -1
+    while days >= -(int(day_count)):
+        date = datetime.date.today() + datetime.timedelta(days=days)
+        users = gotoconnect.get_users(date)
+        logger.info(f"{-days}. Retrieved user list")
 
-        activity_list += user_activity
-    logger.info("retrieved all user activity")
+        activity_list = []
+        for user in users:
+            user_activity = gotoconnect.get_user_activity(user['userId'], date)
+            for item in user_activity:
+                item["user"] = user['userName']
+                # Convert duration from milliseconds to HH:MM:SS format and drop
+                # remaining milliseconds
+                duration=datetime.timedelta(milliseconds=item['duration'])
+                item['duration']=str(duration).split('.')[0]
+                if item['queue']:
+                    item['queue'] = item['queue']['name']
+                item['callerName'] = item['caller']['name']
+                item['callerNumber'] = item['caller']['number']
+                item['calleeName'] = item['callee']['name']
+                item['calleeNumber'] = item['callee']['number']
 
-    date = datetime.date.today() + datetime.timedelta(days=-1)
-  
-    filename =  str(date) + "_jive_call_logs.csv"
-    path_to_file = os.path.join(os.getcwd(), filename)
-    with open(filename, 'w', newline='') as outfile:
-        fields = ['user','queue','direction','disposition','startTime','endTime','answerTime','duration',]
-        # Configure dictionary writer to ignore extra fields in the input data
-        writer = csv.DictWriter(outfile, fieldnames=fields, extrasaction='ignore')    
+            activity_list += user_activity
+        logger.info(f"{-days}. Retrieved all user activity")
 
-        writer.writeheader()
-        writer.writerows(activity_list)
-    logger.info("csv file created")
-    
-    storage = AzureStorage()
+        # Write data to CSV file
+        filename =  str(date) + "_jive_call_logs.csv"
+        path_to_file = os.path.join(os.getcwd(), filename)
+        with open(filename, 'w', newline='') as outfile:
+            fields = ['user','queue','direction','disposition',
+                        'startTime','endTime','answerTime','duration',
+                        'callerName','callerNumber','calleeName','calleeNumber'
+                    ]
+            # Configure dictionary writer to ignore extra fields in the input data
+            writer = csv.DictWriter(outfile, fieldnames=fields, extrasaction='ignore')    
 
-    path = f"{date.year}/{date.month}/"
-    storage.write_file(path_to_file, path)
+            writer.writeheader()
+            writer.writerows(activity_list)
+        logger.info(f"{-days}. CSV file created")
+        
+        # Write CSV file to Azure Storage in paths separated by year and month
+        storage = AzureStorage()
+        path = f"{date.year}/{date.month:02d}/"
+        storage.write_file(path_to_file, path)
+        logger.info(f"{-days}. CSV file uploaded")
 
-    logger.info("csv file uploaded")
+        # Remove CSV file from local storage
+        os.remove(path_to_file)
+
+        days += -1
 
