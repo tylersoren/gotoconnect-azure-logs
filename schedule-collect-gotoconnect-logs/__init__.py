@@ -9,9 +9,12 @@ from ..shared_code.azstorage import AzureStorage
 
 logger = logging.getLogger('app')
 
+# Get # of days to collect logs for, defaults to 1
 day_count = os.getenv("DAYS_TO_RETRIEVE")
 if not day_count:
-    raise ValueError("Need to define DAYS_TO_RETRIEVE environment variable")
+    day_count = 1
+else:
+    day_count = int(day_count)
 
 # Get starting day, defaults to yesterday (-1)
 start_day = os.getenv("START_DAY")
@@ -33,7 +36,7 @@ def main(mytimer: func.TimerRequest) -> None:
     gotoconnect = GoToConnect()     
 
     days = start_day
-    while days > start_day - (int(day_count)):
+    while days > start_day - day_count:
         date = datetime.date.today() + datetime.timedelta(days=days)
         users = gotoconnect.get_users(date)
         logger.info(f"Retrieved user list for {str(date)}")
