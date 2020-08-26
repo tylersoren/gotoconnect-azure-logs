@@ -28,7 +28,7 @@ def main(mytimer: func.TimerRequest) -> None:
     while days >= -(int(day_count)):
         date = datetime.date.today() + datetime.timedelta(days=days)
         users = gotoconnect.get_users(date)
-        logger.info(f"{-days}. Retrieved user list")
+        logger.info(f"Retrieved user list for {str(date)}")
 
         activity_list = []
         for user in users:
@@ -47,7 +47,7 @@ def main(mytimer: func.TimerRequest) -> None:
                 item['calleeNumber'] = item['callee']['number']
 
             activity_list += user_activity
-        logger.info(f"{-days}. Retrieved all user activity")
+        logger.info(f"Retrieved all user activity for {str(date)}")
 
         # Write data to CSV file
         filename =  str(date) + "_jive_call_logs.csv"
@@ -62,13 +62,13 @@ def main(mytimer: func.TimerRequest) -> None:
 
             writer.writeheader()
             writer.writerows(activity_list)
-        logger.info(f"{-days}. CSV file created")
+        logger.info(f"CSV file {filename} created")
         
         # Write CSV file to Azure Storage in paths separated by year and month
         storage = AzureStorage()
         path = f"{date.year}/{date.month:02d}/"
         storage.write_file(path_to_file, path)
-        logger.info(f"{-days}. CSV file uploaded")
+        logger.info(f"CSV file {filename} uploaded")
 
         # Remove CSV file from local storage
         os.remove(path_to_file)
