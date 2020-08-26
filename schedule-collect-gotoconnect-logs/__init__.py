@@ -2,6 +2,7 @@ import datetime
 import logging
 import csv
 import os
+import tempfile
 import azure.functions as func
 from ..shared_code.gotoconnect import GoToConnect
 from ..shared_code.azstorage import AzureStorage
@@ -11,6 +12,13 @@ logger = logging.getLogger('app')
 day_count = os.getenv("DAYS_TO_RETRIEVE")
 if not day_count:
     raise ValueError("Need to define DAYS_TO_RETRIEVE environment variable")
+
+# Get starting day, defaults to yesterday (-1)
+start_day = os.getenv("START_DAY")
+if not start_day:
+    start_day = -1
+else:
+    start_day = int(start_day)
 
 def main(mytimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(
@@ -24,8 +32,8 @@ def main(mytimer: func.TimerRequest) -> None:
     # Create gotoconnect connection object
     gotoconnect = GoToConnect()     
 
-    days = -1
-    while days >= -(int(day_count)):
+    days = start_day
+    while days > start_day - (int(day_count)):
         date = datetime.date.today() + datetime.timedelta(days=days)
         users = gotoconnect.get_users(date)
         logger.info(f"Retrieved user list for {str(date)}")
@@ -51,8 +59,9 @@ def main(mytimer: func.TimerRequest) -> None:
 
         # Write data to CSV file
         filename =  str(date) + "_jive_call_logs.csv"
-        path_to_file = os.path.join(os.getcwd(), filename)
-        with open(filename, 'w', newline='') as outfile:
+        base_path = tempfile.gettempdir()
+        path_to_file = os.path.join(base_path, filename)
+        with open(path_to_file, 'w', newline='') as outfile:
             fields = ['user','queue','direction','disposition',
                         'startTime','endTime','answerTime','duration',
                         'callerName','callerNumber','calleeName','calleeNumber'
