@@ -11,7 +11,7 @@ logger = logging.getLogger('app')
 
 # Get # of days to collect logs for, defaults to 1
 day_count = os.getenv("DAYS_TO_RETRIEVE")
-if not day_count or day_count < 1:
+if not day_count or int(day_count) < 1:
     logger.info("Setting day_count to 1")
     day_count = 1
 else:
@@ -19,7 +19,7 @@ else:
 
 # Get starting day, defaults to yesterday (-1)
 start_day = os.getenv("START_DAY")
-if not start_day or start_day > -1:
+if not start_day or int(start_day) > -1:
     logger.info("Setting start day to -1 (yesterday)")
     start_day = -1
 else:
