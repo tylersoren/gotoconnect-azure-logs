@@ -57,7 +57,7 @@ class GoToConnect:
     headers = { 'Accept': 'application/json', 
       'Content-Type': 'application/x-www-form-urlencoded', 
       'Authorization': f'Basic {basic_auth}' }
-    body =  "grant_type=authorization_code&code=$authorizationCode"
+    body =  f"grant_type=authorization_code&code={authorization_code}&client_id={client_id}"
     
     response = requests.post(url, data=body, headers=headers)
 
