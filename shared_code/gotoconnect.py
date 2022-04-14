@@ -6,16 +6,12 @@ from datetime import date, datetime, timedelta
 
 logger = logging.getLogger('app')
 
-refresh_token = os.getenv("GOTOCONNECT_REFRESH_TOKEN")
-if not refresh_token:
-    raise ValueError("Need to define GOTOCONNECT_REFRESH_TOKEN environment variable")
-
 client_id = os.getenv("GOTOCONNECT_CLIENT_ID")
-if not refresh_token:
+if not client_id:
     raise ValueError("Need to define GOTOCONNECT_CLIENT_ID environment variable")
 
 client_secret = os.getenv("GOTOCONNECT_CLIENT_SECRET")
-if not refresh_token:
+if not client_secret:
     raise ValueError("Need to define GOTOCONNECT_CLIENT_SECRET environment variable")
 
 def get_auth_url(client_id):
@@ -43,8 +39,9 @@ def _base64_encode(text):
   return encoded_string
 
 class GoToConnect:
-  def __init__(self):
+  def __init__(self, refresh_token):
     self.access_token = None
+    self.refresh_token = refresh_token
     self.token_expiration = datetime.now()
     self.principal = ""
     self.refresh_access_token()
@@ -63,21 +60,23 @@ class GoToConnect:
 
     return response.json()
 
-  def refresh_access_token(self, refresh_token=refresh_token, client_id=client_id, client_secret=client_secret):
+  def refresh_access_token(self, client_id=client_id, client_secret=client_secret):
     encoded_auth = _base64_encode(f"{client_id}:{client_secret}")
 
     url = "https://authentication.logmeininc.com/oauth/token" 
     headers = { 'Accept': 'application/json', 
       'Content-Type': 'application/x-www-form-urlencoded', 
       'Authorization': f'Basic {encoded_auth}' }
-    body =  f"grant_type=refresh_token&refresh_token={refresh_token}"
+    body =  f"grant_type=refresh_token&refresh_token={self.refresh_token}"
     
-    response = requests.post(url, data=body, headers=headers)
+    response = requests.post(url, data=body, headers=headers).json()
 
     # Set token and add expiration in seconds to current time
-    self.access_token = response.json()['access_token']
-    self.token_expiration = datetime.now() + timedelta(seconds=response.json()['expires_in']) 
-    self.principal = response.json()['principal']
+    self.access_token = response['access_token']
+    self.token_expiration = datetime.now() + timedelta(seconds=response['expires_in']) 
+    self.principal = response['principal']
+    if response.get('refresh_token'):
+      self.refresh_token = response['refresh_token']
 
     logger.info(f"Token refreshed for principal {self.principal} and expires {self.token_expiration}")
 

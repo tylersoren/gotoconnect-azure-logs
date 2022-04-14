@@ -4,12 +4,37 @@
     {
       "type": "func",
       "command": "host start",
-      "problemMatcher": "$func-watch",
+      "problemMatcher": "$func-python-watch",
       "isBackground": true,
-      "dependsOn": "pipInstall"
+      "dependsOn": "pip install (functions)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
     },
     {
-      "label": "pipInstall",
+      "label": "runFunctionsHost",
+      "type": "shell",
+      "osx": {
+        "command": ". ${config:azureFunctions.pythonVenv}\\bin\\activate && func extensions install && pip install -r requirements.txt && func host start"
+      },
+      "windows": {
+        "command": ". ${config:azureFunctions.pythonVenv}/Scripts/activate ; func extensions install ; pip install -r requirements.txt ; func host start --verbose"
+      },
+      "linux": {
+        "command": ". ${config:azureFunctions.pythonVenv}\\bin\\activate && func extensions install && pip install -r requirements.txt && func host start"
+      },
+      "isBackground": true,
+      "options": {
+
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "languageWorkers__python__arguments": "-m ptvsd --host 127.0.0.1 --port 9091"
+        }
+      },
+      "problemMatcher": "$func-watch"
+    },
+    {
+      "label": "pip install (functions)",
       "type": "shell",
       "osx": {
         "command": "${config:azureFunctions.pythonVenv}/bin/python -m pip install -r requirements.txt"
@@ -20,7 +45,10 @@
       "linux": {
         "command": "${config:azureFunctions.pythonVenv}/bin/python -m pip install -r requirements.txt"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
     }
   ]
 }

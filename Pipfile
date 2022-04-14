@@ -9,6 +9,8 @@ verify_ssl = true
 azure-functions = "*"
 azure-storage-blob = "*"
 requests = "*"
+azure-identity = "*"
+azure-keyvault-secrets = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"
