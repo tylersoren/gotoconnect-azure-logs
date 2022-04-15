@@ -14,7 +14,8 @@ class KeyVault():
 
 
   def get_secret(self, secret_name):
-    return self.client.get_secret(secret_name)
+    secret = self.client.get_secret(secret_name)
+    return secret.value
 
   def set_secret(self, secret_name, secret_value):
     self.client.set_secret(secret_name, secret_value)

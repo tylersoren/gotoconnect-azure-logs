@@ -4,9 +4,9 @@ import csv
 import os
 import tempfile
 import azure.functions as func
-from ..shared_code.gotoconnect import GoToConnect
-from ..shared_code.azstorage import AzureStorage
-from ..shared_code.azkeyvault import KeyVault
+from gotoconnect import GoToConnect
+from azstorage import AzureStorage
+from azkeyvault import KeyVault
 
 logger = logging.getLogger()
 
@@ -39,7 +39,8 @@ def main(mytimer: func.TimerRequest) -> None:
     logging.info('Python timer trigger function ran at %s', utc_timestamp)
 
     # Create gotoconnect connection object using refresh token from key vault
-    gotoconnect = GoToConnect(refresh_token=keyvault.get_secret(secret_name='gotoconnect-refresh-token'))     
+    secret_name='gotoconnect-refresh-token'
+    gotoconnect = GoToConnect(refresh_token=keyvault.get_secret(secret_name=secret_name))     
 
     days = start_day
     while days > start_day - day_count:
@@ -92,7 +93,7 @@ def main(mytimer: func.TimerRequest) -> None:
         os.remove(path_to_file)
 
         days += -1
-    
+
     # Update refresh token in vault
-    keyvault.set_secret(secret_name='gotoconnect_refresh_token', secret_value=gotoconnect.refresh_token)
+    keyvault.set_secret(secret_name=secret_name, secret_value=gotoconnect.refresh_token)
 
